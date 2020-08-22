@@ -12,4 +12,4 @@ gcc -o lc3 src/*.c
 - Run the included image files.
 ```
 lc3 img/rogue.obj
-``
+```
