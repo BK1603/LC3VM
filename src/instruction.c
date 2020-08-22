@@ -1,3 +1,4 @@
+#include "lc3.h"
 #include "instruction.h"
 
 /* Extend bit_count to 16 bits */
@@ -47,12 +48,12 @@ void add(uint16_t instr) {
  */
 void and(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
-  uint16_t r1 = (instr >> 0) & 0x7;
+  uint16_t r1 = (instr >> 6) & 0x7;
   uint16_t imm_flag = (instr >> 5) & 0x1;
 
   if (imm_flag) {
     uint16_t imm5 = sign_extend(instr & 0x1F, 5);
-    reg[r0] = reg[r0] & reg[r1];
+    reg[r0] = reg[r0] & imm5;
   } else {
     uint16_t r2 = instr & 0x7;
     reg[r0] = reg[r0] & reg[r2];
@@ -68,7 +69,7 @@ void and(uint16_t instr) {
 void branch(uint16_t instr) {
   uint16_t flag = (instr >> 9) & 0x7;
   uint16_t PCoffset9 = sign_extend(instr & 0x1FF, 9);
-  if (reg[R_COND] == flag) {
+  if (flag & reg[R_COND]) {
     reg[R_PC] += PCoffset9;
   }
 }
@@ -91,10 +92,9 @@ void jump(uint16_t instr) {
  */
 void jsr(uint16_t instr) {
   uint16_t flag = (instr >> 11) & 0x1;
-  reg[R_PC]++;
   reg[R_R7] = reg[R_PC];
   if (flag) {
-    uint16_t PCoffset11 = sign_extend(instr & 0x3FF, 11);
+    uint16_t PCoffset11 = sign_extend(instr & 0x7FF, 11);
     reg[R_PC] = reg[R_PC] + PCoffset11;
   } else {
     uint16_t BaseR = (instr >> 6) & 0x7;
@@ -106,10 +106,10 @@ void jsr(uint16_t instr) {
  * Load instruction has the following format:
  * 4 bit opcode | 3 bit dest reg | 9 bit offset |
  */
-void ld(uint16_t instr) {
+void load(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
   uint16_t PCoffset9 = sign_extend(instr & 0x1FF, 9);
-  reg[r0] = memory[reg[R_PC] + PCoffset];
+  reg[r0] = mem_read(reg[R_PC] + PCoffset9);
 
   update_flags(r0);
 }
@@ -121,7 +121,7 @@ void ld(uint16_t instr) {
 void ldi(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
   uint16_t PCoffset9 = sign_extend(instr & 0x1FF, 9);
-  reg[r0] = memory[memory[reg[R_PC] + PCoffset]];
+  reg[r0] = mem_read(mem_read(reg[R_PC] + PCoffset9));
 
   update_flags(r0);
 }
@@ -132,9 +132,9 @@ void ldi(uint16_t instr) {
  */
 void ldr(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
-  uint16_t BaseR = (instr >> 6) & 0x2F;
-  uint16_t Offset6 = sign_extend(instr & 0x2F, 6);
-  reg[r0] = memory[reg[BaseR] + Offset6];
+  uint16_t BaseR = (instr >> 6) & 0x7;
+  uint16_t Offset6 = sign_extend(instr & 0x3F, 6);
+  reg[r0] = mem_read(reg[BaseR] + Offset6);
 
   update_flags(r0);
 }
@@ -170,7 +170,7 @@ void not(uint16_t instr) {
 void store(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
   uint16_t PCoffset9 = sign_extend(instr & 0x1FF, 9);
-  memory[PC + PCoffset9] = reg[r0];
+  mem_write(reg[R_PC] + PCoffset9, reg[r0]);
 }
 
 /*
@@ -179,8 +179,8 @@ void store(uint16_t instr) {
  */
 void sti(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
-  uint16_t PCoffset9 = sign_extend(instruction & 0x1FF, 9);
-  memory[memory[PC + PCoffset9]] = reg[r0];
+  uint16_t PCoffset9 = sign_extend(instr & 0x1FF, 9);
+  mem_write(mem_read(reg[R_PC] + PCoffset9), reg[r0]);
 }
 
 /*
@@ -190,6 +190,6 @@ void sti(uint16_t instr) {
 void str(uint16_t instr) {
   uint16_t r0 = (instr >> 9) & 0x7;
   uint16_t r1 = (instr >> 6) & 0x7;
-  uint16_t PCoffset9 = sign_extend(instr & 0x2F, 6);
-  memory[reg[r1] + PCoffset9] = reg[r0];
+  uint16_t PCoffset9 = sign_extend(instr & 0x3F, 6);
+  mem_write(reg[r1] + PCoffset9, reg[r0]);
 }

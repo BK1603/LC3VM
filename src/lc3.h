@@ -1,8 +1,15 @@
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+#include <sys/termios.h>
+#include <sys/time.h>
+#include <fcntl.h>
+
 #ifndef LC3_H
 #define LC3_H
-
-/* memory 16bit x 65536 128kb */
-extern uint16_t memory[UINT16_MAX];
 
 /* registers */
 enum {
@@ -18,8 +25,6 @@ enum {
   R_COND, /* condition register */
   R_COUNT, /* counter */
 };
-
-extern uint16_t reg[R_COUNT];
 
 /* instruction set */
 enum {
@@ -43,9 +48,9 @@ enum {
 
 /* flags */
 enum {
-  FL_POS = 1 << 0;
-  FL_ZRO = 1 << 1;
-  FL_NEG = 1 << 2;
+  FL_POS = 1 << 0,
+  FL_ZRO = 1 << 1,
+  FL_NEG = 1 << 2,
 };
 
 /* Syscalls */
@@ -58,4 +63,23 @@ enum {
   TRAP_HALT = 0x25
 };
 
+enum {
+  MR_KBSR = 0xFE00,
+  MR_KBDR = 0xFE02
+};
+
+/* memory 16bit x 65536 128kb */
+extern uint16_t memory[UINT16_MAX];
+
+/* register storage */
+extern uint16_t reg[R_COUNT];
+
+extern int running;
+
+void mem_write(uint16_t, uint16_t);
+uint16_t mem_read(uint16_t);
+int read_image(const char *);
+void disable_input_buffering();
+void restore_input_buffering();
+void handle_interrupt(int signal);
 #endif
